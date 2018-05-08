@@ -5,7 +5,7 @@
 #
 # The package is created with fpm (it does not necessarily need to be
 # installed into the td-agent embedded ruby). To install fpm run:
-# $ gem install fpm
+# $ sudo gem install --no-ri --no-rdoc fpm
 #
 # The td-agent package installs an embedded ruby distribution in
 # /opt/td-agent/embedded which has its own list of gems. Our built package
@@ -16,6 +16,7 @@
 # Paths to td-agent specific versions of bundle and gem
 BUNDLE=/opt/td-agent/embedded/bin/bundle
 GEM=/opt/td-agent/embedded/bin/gem
+RUBY=/opt/td-agent/embedded/bin/ruby
 FPM=fpm
 
 # The list of gems to bundle into the final package
@@ -28,11 +29,11 @@ CACHE_DIR=./vendor/cache
 # Bundle will store settings and locks in the dot_bundle directory
 DOT_BUNDLE=./.bundle
 
-# This file should be checked into the repository and will generally be
-# deliberately updated with `bundle update gem` rather than by running this
-# Makefile.
-Gemfile.lock:
-	$(BUNDLE) lock --local
+GEMSPEC := ${wildcard *.gemspec}
+NAME    := ${shell $(RUBY) -e 'puts Gem::Specification::load("$(GEMSPEC)").name'}
+VERSION := ${shell $(RUBY) -e 'puts Gem::Specification::load("$(GEMSPEC)").version.to_s'}
+GEMFILE := ${shell $(RUBY) -e 'puts Gem::Specification::load("$(GEMSPEC)").file_name'}
+DEBFILE := $(NAME)_$(VERSION)_all.deb
 
 $(BUNDLE_DIR): Gemfile.lock
 	$(BUNDLE) install --frozen --path $(BUNDLE_DIR)
@@ -40,15 +41,23 @@ $(BUNDLE_DIR): Gemfile.lock
 $(CACHE_DIR): $(BUNDLE_DIR) Gemfile.lock
 	$(BUNDLE) package --no-install
 
-deb: $(CACHE_DIR) $(BUNDLE_DIR) Gemfile.lock
+TARGETS=${filter $(BUNDLED_GEMS),${wildcard $(CACHE_DIR)/*.gem}}
+
+deps: $(BUNDLE_DIR) $(CACHE_DIR)
+
+gem: $(BUNDLE_DIR) deps
+	$(BUNDLE) exec $(GEM) build -V $(GEMSPEC)
+
+deb: gem deps
 	$(FPM) --input-type gem --output-type deb \
 	  --depends 'td-agent > 2' \
 	  --no-auto-depends \
 	  --gem-gem $(GEM) \
 	  --no-gem-fix-name \
 	  --deb-build-depends 'td-agent > 2' \
-	  ($(CACHE_DIR)/*)
-
+	  $(TARGETS) $(GEMFILE)
 
 clean:
-	rm -rf $(BUNDLE_DIR) $(CACHE_DIR) $(DOT_BUNDLE)
+	rm -rf $(BUNDLE_DIR) $(CACHE_DIR) $(DOT_BUNDLE) $(GEMFILE) $(DEBFILE)
+
+.PHONY: deps gem deb clean
