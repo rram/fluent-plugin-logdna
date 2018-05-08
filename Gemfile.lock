@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    fluent-plugin-logdna (0.1.7.1)
+    fluent-plugin-logdna (0.1.8)
       fluentd (>= 0.12.0, < 2)
       http (~> 2.0, >= 2.0.3)
 
@@ -36,7 +36,6 @@ GEM
     http_parser.rb (0.6.0)
     msgpack (1.2.0)
     public_suffix (3.0.1)
-    rake (12.0.0)
     serverengine (2.0.5)
       sigdump (~> 0.2.2)
     sigdump (0.2.4)
@@ -57,7 +56,6 @@ PLATFORMS
 DEPENDENCIES
   bundler (~> 1.16)
   fluent-plugin-logdna!
-  rake
 
 BUNDLED WITH
    1.16.0
