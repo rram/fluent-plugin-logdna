@@ -1,8 +1,8 @@
 PATH
   remote: .
   specs:
-    fluent-plugin-logdna (0.1.7.1)
-      fluentd (>= 0.12.0, < 2)
+    fluent-plugin-logdna (0.1.7.2)
+      fluentd (~> 1.0)
       http (~> 2.0, >= 2.0.3)
 
 GEM
