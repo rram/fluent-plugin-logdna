@@ -93,16 +93,20 @@ module Fluent::Plugin
       line[:line] = JSON.dump record
 
       # At least one of "file" or "app" is required.
-      line[:file] = record['file']
-      line[:file] ||= @file if @file
-      line.delete(:file) if line[:file].nil?
-      line[:app] = record['_app'] || record['app']
-      line[:app] ||= @app if @app
-      line.delete(:app) if line[:app].nil?
+      # Use the defaults from the fluentd config if necessary.
+      line[:file] = record['file'] || @file
+      line[:app] = record['_app'] || record['app'] || @app
+      # Fallback to prevent a persistent 400 error from LogDNA
+      unless line[:file] or line[:app]
+        line[:app] = "<UNKNOWN>"
+      end
 
-      line[:meta] = record['meta']
-      line.delete(:meta) if line[:meta].nil?
-      line
+      # Attach metadata if it exists
+      if record['meta']
+        line[:meta] = record['meta']
+      end
+
+      line.compact
     end
 
     def send_request(body)
