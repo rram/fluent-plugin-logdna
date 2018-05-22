@@ -20,7 +20,6 @@ module Fluent::Plugin
     def start
       super
       require 'json'
-      require 'base64'
       require 'http'
       HTTP.default_options = { :keep_alive_timeout => 60 }
       @ingester = HTTP.persistent @ingester_host
@@ -66,11 +65,33 @@ module Fluent::Plugin
     end
 
     def gather_line_data(tag, time, record)
+      # record is a fluentd record which looks close to what we're going to send to LogDNA.
+      # We need to promote a couple of fields (providing some defaults), and then send
+      # everything else as-is.
       line = {
         level: record['level'] || record['severity'] || tag.nil? ? "INFO" : tag.split('.').last,
         timestamp: time,
-        line: record.to_json
       }
+
+      # The default JSON library will raise an exception if encoding fails.
+      # The HTTPrb library will attempt to encode all json content into UTF-8.
+      # Therefore we need to clense invalid UTF-8 that may be in your message
+      # (say because you're logging raw user input or binary files...). We'll
+      # also set encoding_error to true so that you know the message has been
+      # lossily altered.
+      begin
+        record['message'].encode!("UTF-8")
+      rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
+        record['message'].encode!(
+          "UTF-8",
+          "BINARY",
+          :invalid => :replace,
+          :undef => :replace,
+        )
+        record[:encoding_error] = true
+      end
+      line[:line] = JSON.dump record
+
       # At least one of "file" or "app" is required.
       line[:file] = record['file']
       line[:file] ||= @file if @file
@@ -88,8 +109,7 @@ module Fluent::Plugin
       now = Time.now.to_i
       url = "/logs/ingest?hostname=#{@host}&mac=#{@mac}&ip=#{@ip}&now=#{now}"
       log.debug "Sending #{body[:lines].size} lines to #{@ingester_host}#{url}"
-      @ingester.headers('apikey' => @api_key,
-                        'content-type' => 'application/json')
+      @ingester.headers('apikey' => @api_key)
                .post(url, json: body)
     end
   end
