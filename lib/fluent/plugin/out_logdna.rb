@@ -4,8 +4,6 @@ module Fluent::Plugin
   class LogDNAOutput < Output
     Fluent::Plugin.register_output('logdna', self)
 
-    MAX_RETRIES = 5
-
     config_param :api_key, :string, secret: true
     config_param :hostname, :string
     config_param :mac, :string, default: nil
