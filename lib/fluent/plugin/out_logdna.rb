@@ -35,7 +35,21 @@ module Fluent::Plugin
     def write(chunk)
       body = chunk_to_body(chunk)
       response = send_request(body)
-      raise 'Encountered server error' if response.code >= 400
+      if response.code >= 400
+        error = {
+          http_code: response.code,
+          http_reason: response.reason,
+        }
+        begin
+          body = response.body
+          extra_info = JSON.parse body
+        rescue
+          extra_info = {:message => body.to_s}
+        end
+        error.merge!(extra_info)
+        log.error error
+        raise "Encountered server error when sending to LogDNA. Check fluentd logs for more information"
+      end
       response.flush
     end
 
@@ -73,6 +87,7 @@ module Fluent::Plugin
     def send_request(body)
       now = Time.now.to_i
       url = "/logs/ingest?hostname=#{@host}&mac=#{@mac}&ip=#{@ip}&now=#{now}"
+      log.debug "Sending #{body[:lines].size} lines to #{@ingester_host}#{url}"
       @ingester.headers('apikey' => @api_key,
                         'content-type' => 'application/json')
                .post(url, json: body)
