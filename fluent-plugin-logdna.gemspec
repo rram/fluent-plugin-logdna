@@ -18,6 +18,6 @@ Gem::Specification.new do |s|
   s.executables   = s.files.grep(%r{^bin/}) { |f| File.basename(f) }
   s.required_ruby_version = Gem::Requirement.new('>= 2.0.0')
   s.add_development_dependency "bundler", "~> 1.16"
-  s.add_runtime_dependency 'fluentd', '>= 0.12.0', '< 2'
+  s.add_runtime_dependency 'fluentd', '~> 1.0'
   s.add_runtime_dependency 'http', '~> 2.0', '>= 2.0.3'
 end

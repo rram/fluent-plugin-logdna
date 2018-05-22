@@ -1,7 +1,7 @@
-require 'fluent/output'
+require 'fluent/plugin/output'
 
-module Fluent
-  class LogDNAOutput < Fluent::BufferedOutput
+module Fluent::Plugin
+  class LogDNAOutput < Output
     Fluent::Plugin.register_output('logdna', self)
 
     MAX_RETRIES = 5
@@ -34,10 +34,6 @@ module Fluent
       @ingester.close if @ingester
     end
 
-    def format(tag, time, record)
-      [tag, time, record].to_msgpack
-    end
-
     def write(chunk)
       body = chunk_to_body(chunk)
       response = send_request(body)
@@ -50,9 +46,8 @@ module Fluent
     def chunk_to_body(chunk)
       data = []
 
-      chunk.msgpack_each do |(tag, time, record)|
-        line = gather_line_data(tag, time, record)
-        data << line unless line[:line].empty?
+      chunk.each do |(time, record)|
+        data << gather_line_data(chunk.metadata.tag, time, record)
       end
 
       { lines: data }
@@ -60,7 +55,7 @@ module Fluent
 
     def gather_line_data(tag, time, record)
       line = {
-        level: record['level'] || record['severity'] || tag.split('.').last,
+        level: record['level'] || record['severity'] || tag.nil? ? "INFO" : tag.split('.').last,
         timestamp: time,
         line: record.to_json
       }
