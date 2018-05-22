@@ -10,7 +10,7 @@ module Fluent::Plugin
     config_param :ip, :string, default: nil
     config_param :app, :string, default: nil
     config_param :file, :string, default: nil
-    config_param :ingester_domain, :string, default: 'https://logs.logdna.com'
+    config_param :ingester_host, :string, default: 'https://logs.logdna.com'
 
     def configure(conf)
       super
@@ -23,7 +23,7 @@ module Fluent::Plugin
       require 'base64'
       require 'http'
       HTTP.default_options = { :keep_alive_timeout => 60 }
-      @ingester = HTTP.persistent @ingester_domain
+      @ingester = HTTP.persistent @ingester_host
       @requests = Queue.new
     end
 
